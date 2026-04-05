@@ -28,22 +28,38 @@ WATCHLIST_MIN    = 6    # score 6–7  → #watch-list
 # ---------------------------------------------------------------------------
 
 TARGET_TITLES = [
+    # C-suite and VP level
     "Chief Financial Officer",
     "CFO",
-    "Controller",
-    "Corporate Controller",
-    "Assistant Controller",
+    "Chief Accounting Officer",
+    "CAO",
     "VP Finance",
     "VP of Finance",
     "Vice President Finance",
     "Vice President of Finance",
+    "VP Accounting",
+    "Vice President of Accounting",
+    "VP of Accounting",
+    # Controller titles
+    "Controller",
+    "Corporate Controller",
+    "Assistant Controller",
+    "Plant Controller",
+    "Division Controller",
+    "Regional Controller",
+    # Director level — finance and accounting only
     "Director of Finance",
     "Director Finance",
     "Finance Director",
-    "Accounting Director",
     "Director of Accounting",
-    "VP Accounting",
-    "Vice President of Accounting",
+    "Accounting Director",
+    "Director of Financial",
+    "Director of Financial Systems",
+    "Director of Financial Planning",
+    # Manager level — finance and accounting
+    "Finance Manager",
+    "Accounting Manager",
+    "Financial Systems Manager",
 ]
 
 
@@ -154,10 +170,11 @@ JSEARCH_SWEEP_TIMES_UTC = [[15, 30], [0, 0]]
 
 # Search queries — each is one API call per sweep.
 # Keep to 3 queries to stay safely within Basic plan (3 × 2 sweeps = 6/day).
+# 2 queries x 2 sweeps x 30 days = 120 requests/month
+# Free tier limit is 200 — well within budget.
 JSEARCH_QUERIES = [
-    "Controller finance",
-    "CFO Chief Financial Officer",
-    "VP Finance Director Finance",
+    "Controller CFO Chief Financial Officer finance accounting",
+    "VP Finance Director Finance Accounting CAO",
 ]
 
 # How many results to request per query (max 10 per page on free tiers)
