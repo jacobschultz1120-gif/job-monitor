@@ -1,4 +1,4 @@
-# =============================================================================
+=============================================================================
 # JOB MONITOR CONFIGURATION
 # The only file you need to edit.
 # Railway picks up changes automatically within ~2 minutes of a commit.
@@ -17,8 +17,11 @@ POLL_INTERVAL_SECONDS = 300   # every 5 minutes
 # ---------------------------------------------------------------------------
 
 URGENT_THRESHOLD = 8    # score 8–10 → #urgent
-WATCHLIST_MIN    = 6    # score 6–7  → #watch-list
-                        # below 6   → suppressed
+WATCHLIST_MIN    = 4    # score 4–7  → #watch-list
+                        # below 4   → suppressed (truly irrelevant)
+# Note: WATCHLIST_MIN lowered from 6 to 4 so all title-matched postings
+# reach Discord regardless of ERP signal strength in the JD.
+# Adjust back to 6 if watch-list volume becomes too high.
 
 
 # ---------------------------------------------------------------------------
@@ -125,11 +128,22 @@ ALL_SIGNAL_PHRASES = URGENT_SIGNAL_PHRASES + WATCHLIST_SIGNAL_PHRASES
 # ---------------------------------------------------------------------------
 
 ICP_INDUSTRIES = [
-    "Food & Beverage (manufacturers, distributors, brands, breweries, wineries)",
-    "Consumer Goods / CPG (personal care, beauty, household products, pet products)",
-    "Manufacturing & Industrial (fabrication, assembly, contract manufacturing, OEM)",
-    "Building Materials (lumber, flooring, roofing, HVAC, hardware, coatings, millwork)",
+    "Food & Beverage (manufacturers, distributors, brands, breweries, wineries, restaurants, catering)",
+    "Consumer Goods / CPG (personal care, beauty, household products, pet products, apparel, toys, home goods)",
+    "Manufacturing & Industrial / Equipment (fabrication, assembly, contract manufacturing, OEM, machinery, packaging)",
+    "Building Materials / Construction / Energy (lumber, flooring, roofing, HVAC, hardware, contractors, solar, utilities)",
     "Retail / E-commerce / Wholesale Distribution",
+    "Software / Technology (SaaS, cloud, cybersecurity, fintech, edtech, enterprise software, digital platforms)",
+    "Health / Life Sciences (healthcare, hospitals, medical devices, pharma, biotech, dental, home health)",
+    "Financial Services (insurance, banking, credit unions, wealth management, mortgage, lending, payments)",
+    "Consulting / IT Services (management consulting, staffing, systems integrators, outsourcing, advisory)",
+    "Nonprofits / Associations (foundations, charities, universities, colleges, social services)",
+    "Advertising / Media / Publishing (agencies, digital marketing, broadcast, content, PR firms)",
+    "Hospitality / Travel (hotels, resorts, restaurants, events, tourism, venues)",
+    "Business Services (facilities management, property management, real estate, logistics, freight)",
+    "Consumer Services (home services, fitness, personal services, childcare)",
+    "Transportation / Logistics (trucking, freight, courier, shipping, fleet, aviation)",
+    "Public Sector / Government Contractors (federal, defense, state, municipal)",
 ]
 
 
