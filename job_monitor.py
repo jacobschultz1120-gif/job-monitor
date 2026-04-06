@@ -264,8 +264,6 @@ def fetch_jsearch() -> list[dict]:
                 continue
             if not title_matches(title):
                 continue
-            if not has_signal(desc):
-                continue
 
             jobs.append({
                 "source":           "JSearch (LinkedIn/Indeed/Glassdoor)",
@@ -316,7 +314,6 @@ def fetch_muse() -> list[dict]:
 
         if not is_new(company=company, title=title, url=url): continue
         if not title_matches(title): continue
-        if not has_signal(desc): continue
 
         jobs.append({
             "source": "The Muse", "title": title, "company": company,
@@ -357,7 +354,6 @@ def fetch_remotive() -> list[dict]:
 
         if not is_new(company=company, title=title, url=url): continue
         if not title_matches(title): continue
-        if not has_signal(desc): continue
 
         jobs.append({
             "source": "Remotive", "title": title, "company": company,
@@ -398,7 +394,6 @@ def fetch_greenhouse(company: dict) -> list[dict]:
 
         if not is_new(company=name, title=title, url=url): continue
         if not title_matches(title): continue
-        if not has_signal(desc): continue
 
         jobs.append({
             "source": f"Greenhouse (direct — {name})", "title": title,
@@ -434,7 +429,6 @@ def fetch_lever(company: dict) -> list[dict]:
 
         if not is_new(company=name, title=title, url=url): continue
         if not title_matches(title): continue
-        if not has_signal(desc): continue
 
         jobs.append({
             "source": f"Lever (direct — {name})", "title": title,
@@ -470,7 +464,6 @@ def fetch_ashby(company: dict) -> list[dict]:
 
         if not is_new(company=name, title=title, url=url): continue
         if not title_matches(title): continue
-        if not has_signal(desc): continue
 
         jobs.append({
             "source": f"Ashby (direct — {name})", "title": title,
@@ -812,7 +805,7 @@ def run_cycle() -> dict:
         log.info("  No new candidates this cycle")
         return {"candidates": 0, "sent": 0}
 
-    log.info(f"  Pre-filter passed: {len(candidates)} — sending to AI…")
+    log.info(f"  Title-matched candidates: {len(candidates)} — sending to AI…")
     scored = [score_job(j) for j in candidates]
 
     # Suppress wrong industry or clearly outside territory
