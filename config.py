@@ -1,4 +1,4 @@
-=============================================================================
+# =============================================================================
 # JOB MONITOR CONFIGURATION
 # The only file you need to edit.
 # Railway picks up changes automatically within ~2 minutes of a commit.
