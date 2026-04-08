@@ -479,64 +479,71 @@ def fetch_ashby(company: dict) -> list[dict]:
 # AI SCORING — Claude reads the JD and determines ICP fit + territory + score
 # ─────────────────────────────────────────────────────────────────────────────
 
-SCORE_PROMPT = f"""\
-You are a sales intelligence analyst for a NetSuite ERP account executive.
+SCORE_PROMPT = f"""You are a sales intelligence analyst for a NetSuite ERP account executive covering an open territory.
 
-The rep sells NetSuite to mid-market companies ($5M–$100M annual revenue).
+TERRITORY: AK, AZ, CA, CO, HI, ID, KS, MN, MT, NE, NV, NM, ND, OK, OR, SD, UT, WA, WY plus British Columbia, Saskatchewan, Northwest Territories, Yukon.
+The rep cares about COMPANY HQ LOCATION — show it if the HQ is in territory even if the job is posted elsewhere or is remote.
 
-TARGET ICP INDUSTRIES (the company must appear to operate in one of these):
-{chr(10).join(f'  • {i}' for i in ICP_INDUSTRIES)}
+REVENUE SWEET SPOT: $0–$20M annual revenue. Companies clearly above $20M (large enterprise, publicly traded) should score 1–2 regardless of trigger. ZoomInfo often undercodes revenue — lean inclusive.
 
-TERRITORY (where the company HQ must be located):
-  US states: {', '.join(TERRITORY_STATES)}
-  Canada: {', '.join(TERRITORY_CANADA)}
+AUTO-SUPPRESS (score 1–2 no matter what):
+  • Publicly traded / NYSE / NASDAQ companies
+  • Pre-seed or pre-revenue startups with no operating business yet
+  • Companies clearly outside territory with no territory connection
 
-The rep cares about the COMPANY HQ LOCATION, not where the job is posted.
-A remote CFO role posted anywhere is valid if the company HQ is in territory.
+SCORING FRAMEWORK — apply in order:
 
-Read the job posting below. Return ONLY valid JSON — no markdown, no backticks,
-nothing outside the JSON object.
+Step 1 — WHY NOW (the catalyst — most important dimension):
+  Strongest (can reach 9–10 alone):
+    • New CFO, Controller, VP Finance, Director of Finance hire at a scaling company — new decision-maker with mandate to evaluate everything
+
+  Strong (can reach 7–8 alone):
+    • Post-acquisition finance consolidation role
+    • First finance leadership hire at a company that has been founder-led
+    • Funding round + finance hire = board pressure and new leadership together
+
+  Moderate (reach 5–7, complexity pushes higher):
+    • Growing company adding finance headcount (not leadership replacement)
+    • Role created as company scales into new markets or channels
+
+Step 2 — OPERATIONAL COMPLEXITY (adds 1–2 points when present):
+  Any of the following in the JD push the score up:
+    • Multi-entity, multi-location, or multi-subsidiary environment
+    • Multi-currency or cross-border operations
+    • High transaction volume (distribution, fulfillment, manufacturing)
+    • Inventory management complexity
+    • Revenue recognition complexity (subscriptions, contracts, milestones)
+    • JD mentions prior ERP implementation, evaluation, or system selection
+    • JD names a specific ERP or accounting platform (NetSuite, Sage, QuickBooks, Dynamics, Acumatica) — strong signal of active evaluation or replacement
+
+Step 3 — INDUSTRY FIT:
+  Highest: Food & Beverage, Manufacturing, Building Materials, Consumer Goods, Wholesale Distribution, Retail / E-commerce
+  Good: Software / SaaS, Healthcare services, Professional services, Nonprofits, Hospitality, Transportation / Logistics
+  Lower: Pure financial services, Real estate investment, Government
+
+ICP INDUSTRIES for this rep:
+{chr(10).join(f'  • {{i}}' for i in ICP_INDUSTRIES)}
+
+Read the job posting and return ONLY a valid JSON object — no markdown, no backticks, nothing outside the JSON.
 
 {{
-  "icp_industry": <the industry this company most likely operates in, e.g. \
-"Food & Beverage — distribution" or "Building Materials — roofing manufacturer". \
-Write "Unknown" if you genuinely cannot tell>,
-  "icp_match": <true if the industry matches one of the five ICP verticals, \
-false if clearly outside (e.g. SaaS, healthcare, finance, government), \
-null if you cannot determine>,
-  "hq_location": <your best inference of company HQ, e.g. "Portland, OR". \
-Use company name, description context, office locations, any clues. null if unknown>,
-  "hq_in_territory": <true if HQ appears to be in territory, false if clearly \
-outside, null if unknown>,
-  "score": <integer 1–10 — NetSuite opportunity strength>,
-  "score_reason": <one plain-English sentence explaining the score>,
-  "revenue_estimate": <best estimate of annual revenue, e.g. "$20M–$60M". \
-Use funding size, employee count, geographic scope, industry benchmarks. \
-"Unknown" if no basis>,
+  "score": <integer 1–10>,
+  "score_reason": <one plain-English sentence — the most important factor>,
+  "why_now": <specific catalyst, e.g. "New CFO hire at scaling company" or "Post-acquisition consolidation role" or "General headcount growth">,
+  "complexity_signals": <list of signals found, e.g. ["multi-entity", "ERP evaluation mentioned", "NetSuite named"] or []>,
+  "icp_industry": <industry this company operates in, e.g. "Food & Beverage — distribution">,
+  "icp_match": <true if in ICP industry, false if clearly outside, null if unknown>,
+  "hq_location": <best inference of company HQ, e.g. "Portland, OR". Use company name, JD context, office locations. null if unknown>,
+  "hq_in_territory": <true if HQ in territory, false if clearly outside, null if unknown>,
+  "revenue_estimate": <best estimate e.g. "$5M–$20M". Use any clues. "Unknown" if none>,
   "revenue_confidence": <"low", "medium", or "high">,
-  "is_replacement_signal": <true if JD suggests they are replacing or evaluating \
-a current system, false otherwise>,
-  "company_website": <the company's most likely website URL. First look for it \
-explicitly in the job posting. If not stated, infer the most probable URL from \
-the company name — e.g. "Pacific Ridge Foods" -> "www.pacificridgefoods.com". \
-Always return your best guess as a full URL starting with www. Append "(inferred)" \
-if guessing rather than reading it from the posting. Return null only if the \
-company name is too generic to make any reasonable guess.>
+  "publicly_traded": <true if company appears publicly traded, false otherwise>,
+  "is_replacement_signal": <true if JD suggests replacing or evaluating a current system>,
+  "company_website": <website URL if stated, otherwise infer as www.companyname.com with "(inferred)" appended. null only if name is too generic>
 }}
-
-SCORING GUIDE:
-  9–10  JD names a specific ERP or competitor, mentions prior implementation/\
-evaluation experience, or signals active system selection. Company is clearly \
-in ICP industry and territory.
-  7–8   Strong ERP-adjacent signals (multi-entity, consolidation, digital \
-transformation) + company is in ICP industry.
-  5–6   Company in ICP industry but ERP urgency is unclear from the JD.
-  3–4   Weak industry fit or no meaningful ERP signal.
-  1–2   Wrong industry, too large, or generic posting with no relevant signals.
 
 JOB POSTING:
 """
-
 
 def score_job(job: dict) -> dict:
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
