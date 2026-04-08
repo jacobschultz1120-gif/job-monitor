@@ -161,6 +161,52 @@ def has_signal(description: str) -> bool:
     return any(lower(phrase) in desc for phrase in ALL_SIGNAL_PHRASES)
 
 
+def is_recruiter_posting(title: str, company: str, description: str) -> bool:
+    """
+    Return True if this posting appears to be from a recruitment or staffing
+    firm acting on behalf of an undisclosed client. These are not useful signals
+    because we cannot identify the actual hiring company.
+    """
+    combined = lower(title + " " + company + " " + description)
+
+    # Company name signals — staffing/recruitment firms
+    recruiter_company_terms = [
+        "staffing", "recruiting", "recruitment", "talent acquisition",
+        "executive search", "search firm", "headhunter", "placement",
+        "talent solutions", "workforce solutions", "hr solutions",
+        "korn ferry", "heidrick", "spencer stuart", "egon zehnder",
+        "russell reynolds", "robert half", "michaels & associates",
+        "accenture talent", "adecco", "manpower", "randstad",
+        "insight global", "apex group", "beacon hill", "vaco",
+        "cybercoders", "talentbridge", "lucrum group", "lhh",
+        "ledgent", "creative financial staffing", "cfs",
+    ]
+
+    # Description signals — language used by recruiters
+    recruiter_description_terms = [
+        "our client is", "our client has", "on behalf of our client",
+        "confidential search", "our client, a", "client company",
+        "representing a", "working with a client",
+        "we are partnering with", "we have partnered with",
+        "we are retained", "retained search", "contingency search",
+        "our client seeks", "our client needs",
+        "the company is a", "the organization is",
+        "position is with", "opportunity is with",
+    ]
+
+    company_lower = lower(company)
+    for term in recruiter_company_terms:
+        if term in company_lower:
+            return True
+
+    desc_lower = lower(description[:500])  # check first 500 chars of JD
+    for term in recruiter_description_terms:
+        if term in desc_lower:
+            return True
+
+    return False
+
+
 def get_matched_phrases(description: str, limit: int = 4) -> list[str]:
     desc  = lower(description)
     found = []
@@ -314,6 +360,9 @@ def fetch_muse() -> list[dict]:
 
         if not is_new(company=company, title=title, url=url): continue
         if not title_matches(title): continue
+        if is_recruiter_posting(title, company, desc):
+            log.info(f"  [Skip] Recruiter posting: {company} — {title[:50]}")
+            continue
 
         jobs.append({
             "source": "The Muse", "title": title, "company": company,
@@ -354,6 +403,9 @@ def fetch_remotive() -> list[dict]:
 
         if not is_new(company=company, title=title, url=url): continue
         if not title_matches(title): continue
+        if is_recruiter_posting(title, company, desc):
+            log.info(f"  [Skip] Recruiter posting: {company} — {title[:50]}")
+            continue
 
         jobs.append({
             "source": "Remotive", "title": title, "company": company,
@@ -394,6 +446,9 @@ def fetch_greenhouse(company: dict) -> list[dict]:
 
         if not is_new(company=name, title=title, url=url): continue
         if not title_matches(title): continue
+        if is_recruiter_posting(title, name, desc):
+            log.info(f"  [Skip] Recruiter posting: {name} — {title[:50]}")
+            continue
 
         jobs.append({
             "source": f"Greenhouse (direct — {name})", "title": title,
@@ -429,6 +484,9 @@ def fetch_lever(company: dict) -> list[dict]:
 
         if not is_new(company=name, title=title, url=url): continue
         if not title_matches(title): continue
+        if is_recruiter_posting(title, name, desc):
+            log.info(f"  [Skip] Recruiter posting: {name} — {title[:50]}")
+            continue
 
         jobs.append({
             "source": f"Lever (direct — {name})", "title": title,
@@ -464,6 +522,9 @@ def fetch_ashby(company: dict) -> list[dict]:
 
         if not is_new(company=name, title=title, url=url): continue
         if not title_matches(title): continue
+        if is_recruiter_posting(title, name, desc):
+            log.info(f"  [Skip] Recruiter posting: {name} — {title[:50]}")
+            continue
 
         jobs.append({
             "source": f"Ashby (direct — {name})", "title": title,
@@ -540,6 +601,7 @@ Read the job posting and return ONLY a valid JSON object — no markdown, no bac
   "publicly_traded": <true if company appears publicly traded, false otherwise>,
   "is_replacement_signal": <true if JD suggests replacing or evaluating a current system>,
   "company_website": <website URL if stated, otherwise infer as www.companyname.com with "(inferred)" appended. null only if name is too generic>
+  "is_recruiter_posting": <true if this posting is from a staffing, recruiting, or executive search firm on behalf of an undisclosed client — look for "our client", "confidential search", "on behalf of", or a company name that is clearly a staffing firm. false if posted directly by the hiring company>,
 }}
 
 JOB POSTING:
@@ -587,6 +649,7 @@ def score_job(job: dict) -> dict:
             "revenue_estimate":      str(parsed.get("revenue_estimate", "Unknown")),
             "revenue_confidence":    str(parsed.get("revenue_confidence", "low")),
             "is_replacement_signal": bool(parsed.get("is_replacement_signal", False)),
+            "is_recruiter_posting":  bool(parsed.get("is_recruiter_posting", False)),
             # Use employer_website from JSearch if provided — skip AI inference
             "company_website": (
                 job.get("employer_website")
@@ -814,6 +877,13 @@ def run_cycle() -> dict:
 
     log.info(f"  Title-matched candidates: {len(candidates)} — sending to AI…")
     scored = [score_job(j) for j in candidates]
+
+    # Suppress recruiter postings (confirmed by AI)
+    recruiter_postings = [j for j in scored if j.get("is_recruiter_posting")]
+    if recruiter_postings:
+        for j in recruiter_postings:
+            log.info(f"  [Skip] AI confirmed recruiter posting: {j['company']} — {j['title'][:50]}")
+    scored = [j for j in scored if not j.get("is_recruiter_posting")]
 
     # Suppress wrong industry or clearly outside territory
     actionable = [
